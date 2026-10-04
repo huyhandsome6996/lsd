@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5 Cửa Ải 1954 — Ai còn trụ đến Giơnevơ?</title>
+<meta name="description" content="Trò chơi lịch sử trên lớp: từ thắng lợi Chiến dịch Điện Biên Phủ đến Hội nghị Giơnevơ 1954. Chơi cá nhân loại dần, điều khiển bởi người dẫn.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='14'%20fill='%23A62E32'/%3E%3Cpath%20d='M50%2016%20L60.5%2041.5%20L88%2041.5%20L65.5%2058.5%20L74%2085%20L50%2069.5%20L26%2085%20L34.5%2058.5%20L12%2041.5%20L39.5%2041.5%20Z'%20fill='%23F8F5ED'/%3E%3C/svg%3E">
+<link rel="preload" as="image" href="./assets/background_1954.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="stage" data-testid="stage">
+  <div class="bg-layer" aria-hidden="true"></div>
+  <div class="bg-veil" aria-hidden="true"></div>
+
+  <!-- Nút góc toàn cục -->
+  <button type="button" id="btnUndo" class="btn btn-corner btn-corner-left" data-testid="btn-undo" hidden>Hoàn tác</button>
+  <button type="button" id="btnFs" class="btn btn-corner btn-corner-right" data-testid="btn-fs" hidden>Toàn màn hình</button>
+
+  <!-- ============ MÀN 1: VÀO TRANG ============ -->
+  <section class="screen screen-setup is-active" id="screen-setup" data-testid="screen-setup">
+    <div class="setup-wrap">
+      <p class="setup-kicker">Trò chơi lịch sử — Chiến dịch Điện Biên Phủ &amp; Hội nghị Giơnevơ</p>
+      <h1 class="setup-title">5 CỬA ẢI 1954</h1>
+      <p class="setup-sub">AI CÒN TRỤ ĐẾN GIƠNEVƠ?</p>
+      <div class="rule-line">Sai ngồi xuống &bull; Đúng đi tiếp &bull; 5 câu tăng dần độ khó</div>
+      <div class="setup-controls">
+        <label class="count-label" for="playerCount">Số người tham gia (5&ndash;15):</label>
+        <div class="stepper">
+          <button type="button" id="btnCountMinus" class="btn btn-stepper" aria-label="Giảm số người">&minus;</button>
+          <input id="playerCount" data-testid="player-count" type="number" min="5" max="15" step="1" value="10" inputmode="numeric" autocomplete="off">
+          <button type="button" id="btnCountPlus" class="btn btn-stepper" aria-label="Tăng số người">+</button>
+        </div>
+        <button type="button" id="btnStart" class="btn btn-primary btn-big" data-testid="btn-start">Bắt đầu</button>
+        <button type="button" id="btnFsSetup" class="btn btn-ghost btn-big" data-testid="btn-fs-setup">Toàn màn hình</button>
+      </div>
+      <div class="error-slot"><p class="setup-error" id="setupError" role="alert" hidden></p></div>
+      <p class="setup-hint">Mời 5&ndash;15 bạn đứng tại chỗ. Mỗi bạn chuẩn bị thẻ A / B / C / D (hoặc giơ 1&ndash;4 ngón theo hướng dẫn). Người dẫn khóa đáp án rồi công bố.</p>
+    </div>
+    <p class="art-credit">Minh họa lịch sử</p>
+  </section>
+
+  <!-- ============ MÀN 2: BẢN ĐỒ NĂM CỬA ẢI ============ -->
+  <section class="screen screen-map" id="screen-map" data-testid="screen-map">
+    <div class="map-head">
+      <h2 class="map-title">Hành trình 5 cửa ải</h2>
+      <div class="chip chip-survivors chip-big" data-testid="map-survivors-chip">Còn trụ: <b id="mapSurvivors">10</b></div>
+    </div>
+    <div class="map-mid">
+      <p class="map-note" id="mapNote">Cửa ải đang mở nổi sáng. Mở lần lượt theo độ khó tăng dần, tới Giơnevơ!</p>
+      <button type="button" id="btnOpenGate" class="btn btn-primary btn-big" data-testid="btn-open-gate">Mở cửa ải tiếp theo</button>
+    </div>
+    <div class="route-wrap" id="routeWrap">
+      <div class="gate is-future" id="gate-1" style="left:12.14%; top:88.28%;" data-testid="gate-1">
+        <div class="gate-label"><b>Cửa ải 1</b><span>Khởi động</span></div>
+        <div class="gate-visual">
+          <img class="gate-env" src="./assets/envelope_sealed.png" alt="Phong bì niêm phong - cửa ải 1">
+          <div class="gate-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="gate is-future" id="gate-2" style="left:32.76%; top:92.05%;" data-testid="gate-2">
+        <div class="gate-label"><b>Cửa ải 2</b><span>Nắm mốc</span></div>
+        <div class="gate-visual">
+          <img class="gate-env" src="./assets/envelope_sealed.png" alt="Phong bì niêm phong - cửa ải 2">
+          <div class="gate-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="gate is-future" id="gate-3" style="left:50.49%; top:92.41%;" data-testid="gate-3">
+        <div class="gate-label"><b>Cửa ải 3</b><span>Hiểu chủ trương</span></div>
+        <div class="gate-visual">
+          <img class="gate-env" src="./assets/envelope_sealed.png" alt="Phong bì niêm phong - cửa ải 3">
+          <div class="gate-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="gate is-future" id="gate-4" style="left:67.26%; top:93.5%;" data-testid="gate-4">
+        <div class="gate-label"><b>Cửa ải 4</b><span>Nối sự kiện</span></div>
+        <div class="gate-visual">
+          <img class="gate-env" src="./assets/envelope_sealed.png" alt="Phong bì niêm phong - cửa ải 4">
+          <div class="gate-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="gate is-future" id="gate-5" style="left:84.2%; top:93.3%;" data-testid="gate-5">
+        <div class="gate-label"><b>Cửa ải 5</b><span>Tổng hợp</span></div>
+        <div class="gate-visual">
+          <img class="gate-env" src="./assets/envelope_sealed.png" alt="Phong bì niêm phong - cửa ải 5">
+          <div class="gate-medal" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MÀN 3 + 4: CÂU HỎI / CÔNG BỐ ============ -->
+  <section class="screen screen-question" id="screen-question" data-testid="screen-question">
+    <header class="q-head">
+      <div class="q-head-left">
+        <span class="chip chip-diff" id="qDiff" data-testid="q-diff">Khởi động</span>
+        <span class="chip chip-count" id="qCount" data-testid="q-count">Câu 01 / 05</span>
+      </div>
+      <div class="q-head-right">
+        <div class="timer" id="timerBox" data-testid="timer">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="timer-track" cx="60" cy="60" r="52"></circle>
+            <circle class="timer-arc" id="timerArc" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="timer-center">
+            <div class="timer-num" id="timerNum" data-testid="timer-num">15</div>
+            <div class="timer-sub" id="timerSub">giây</div>
+          </div>
+        </div>
+        <div class="chip chip-survivors" data-testid="q-surv-chip">Còn trụ: <b id="qSurv" data-testid="q-surv">10</b></div>
+      </div>
+    </header>
+
+    <div class="q-sheet" id="qSheet">
+      <div class="q-progress" id="qProgress" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <h2 class="q-prompt" id="qPrompt" data-testid="q-prompt"></h2>
+      <div class="q-statements" id="qStatements" data-testid="q-statements" hidden></div>
+      <div class="options" id="optionsGrid" data-testid="options"></div>
+      <div class="reveal-panel" id="revealPanel" hidden data-testid="reveal-panel">
+        <div class="reveal-note" id="revealNote">Người trả lời <b>sai ngồi xuống</b> &mdash; người trả lời <b>đúng tiếp tục đứng</b>.</div>
+        <p class="q-explain" id="qExplain" data-testid="q-explain"></p>
+        <p class="q-source" id="qSource" data-testid="q-source"></p>
+      </div>
+    </div>
+
+    <footer class="q-foot">
+      <div class="q-controls" id="qControls">
+        <button type="button" id="btnStartCount" class="btn btn-primary btn-big" data-testid="btn-start-count">Bắt đầu đếm</button>
+        <button type="button" id="btnPause" class="btn btn-ghost btn-big" data-testid="btn-pause" hidden>Tạm dừng</button>
+        <button type="button" id="btnLock" class="btn btn-dark btn-big" data-testid="btn-lock" hidden>Khóa đáp án</button>
+        <button type="button" id="btnReveal" class="btn btn-primary btn-big" data-testid="btn-reveal" hidden>Công bố đáp án</button>
+        <button type="button" id="btnToEntry" class="btn btn-primary btn-big" data-testid="btn-to-entry" hidden>Nhập kết quả</button>
+        <span class="chip chip-locked" id="lockedChip" hidden>Đã khóa đáp án &mdash; chờ công bố</span>
+      </div>
+      <div class="entry-panel" id="entryPanel" hidden data-testid="entry-panel">
+        <div class="entry-row">
+          <label class="entry-label" id="entryLabel" for="survivorsInput">Số người còn trụ sau vòng này:</label>
+          <div class="stepper">
+            <button type="button" id="btnSurvMinus" class="btn btn-stepper" aria-label="Giảm">&minus;</button>
+            <input id="survivorsInput" data-testid="survivors-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" autocomplete="off">
+            <button type="button" id="btnSurvPlus" class="btn btn-stepper" aria-label="Tăng">+</button>
+          </div>
+          <span class="entry-max" id="entryMax" data-testid="entry-max">/ tối đa 10</span>
+        </div>
+        <div class="error-slot"><div class="entry-error" id="entryError" role="alert" hidden data-testid="entry-error"></div></div>
+        <button type="button" id="btnConfirm" class="btn btn-primary btn-big" data-testid="btn-confirm">Xác nhận kết quả</button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ============ MÀN 5a: NHẬP TÊN NGƯỜI THẮNG ============ -->
+  <section class="screen screen-winner" id="screen-winner" data-testid="screen-winner">
+    <div class="end-wrap">
+      <h2 class="end-title">Chỉ còn một người trụ lại!</h2>
+      <p class="end-msg">Toàn bộ 5 cửa ải đã qua. Mời người dẫn xướng tên người chiến thắng.</p>
+      <div class="winner-form">
+        <label class="count-label" for="winnerName">Nhập tên người thắng (có thể bỏ trống):</label>
+        <input id="winnerName" data-testid="winner-name" type="text" maxlength="40" placeholder="Ví dụ: Minh &mdash; lớp 12A" autocomplete="off">
+        <button type="button" id="btnAward" class="btn btn-primary btn-big" data-testid="btn-award">Mời nhận phần thưởng</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MÀN 5b: TRAO THƯỞNG / KẾT THÚC ============ -->
+  <section class="screen screen-finished" id="screen-finished" data-testid="screen-finished">
+    <div class="end-wrap">
+      <img class="end-medal" id="finishedMedal" src="./assets/winner_medal.png" alt="Huy chương người chiến thắng">
+      <h2 class="end-title" id="finishedTitle" data-testid="finished-title"></h2>
+      <p class="end-msg" id="finishedMsg" data-testid="finished-msg"></p>
+      <p class="end-name" id="finishedName" data-testid="finished-name"></p>
+      <button type="button" id="btnReplay" class="btn btn-primary btn-big" data-testid="btn-replay">Chơi lại</button>
+    </div>
+  </section>
+
+  <!-- Toast thông báo -->
+  <div id="toast" data-testid="toast" hidden></div>
+
+  <!-- Hộp xác nhận -->
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalMsg">
+      <p class="modal-msg" id="modalMsg" data-testid="modal-msg"></p>
+      <div class="modal-actions">
+        <button type="button" id="btnModalCancel" class="btn btn-ghost" data-testid="modal-cancel">Hủy</button>
+        <button type="button" id="btnModalOk" class="btn btn-primary" data-testid="modal-ok">Đồng ý</button>
+      </div>
+    </div>
+  </div>
+</div>
+<noscript><p style="color:#A62E32;text-align:center;padding:2rem;font-family:sans-serif">Vui lòng bật JavaScript để chơi 5 Cửa Ải 1954.</p></noscript>
+<script src="./app.js" defer></script>
+</body>
+</html>
