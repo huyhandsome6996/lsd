@@ -2,7 +2,7 @@
 
 Trò chơi lịch sử chiếu trên lớp, thiết kế cho phần trình bày tối đa 15 phút với 3–4 phút chơi cuối bài. Chủ đề: từ thắng lợi Chiến dịch Điện Biên Phủ (7/5/1954) đến Hội nghị Giơnevơ — nghệ thuật kết hợp đấu tranh quân sự với đấu tranh ngoại giao của Đảng.
 
-**Trò chơi cá nhân loại dần**: 5–15 bạn đứng tại chỗ, giơ thẻ A/B/C/D (hoặc 1–4 ngón). Người dẫn chiếu câu hỏi, khóa đáp án, công bố và nhập số người còn trụ. Sai ngồi xuống, đúng đi tiếp qua 5 cửa ải tăng dần độ khó.
+**Trò chơi cá nhân loại dần**: 5–15 bạn đứng tại chỗ, giơ thẻ A/B/C/D (hoặc 1–4 ngón). Người dẫn chiếu câu hỏi, khóa đáp án, công bố, chỉnh số người còn trụ bằng nút −/+ rồi bấm một nút sang câu kế. Sai ngồi xuống, đúng đi tiếp qua 5 cửa ải tăng dần độ khó.
 
 - Không cần tài khoản, QR, backend, WebSocket hay điện thoại cho người chơi.
 - Website tĩnh thuần HTML/CSS/JavaScript, chạy trực tiếp trên GitHub Pages.
@@ -15,12 +15,12 @@ Mở địa chỉ GitHub Pages của repository này (Settings → Pages), ví d
 ## Hướng dẫn người dẫn (5 bước)
 
 1. **Vào trang** — nhập số người tham gia (5–15), bấm **Bắt đầu** (tự requested toàn màn hình; nếu trình duyệt từ chối, nhấn F11). Đọc luật: *Sai ngồi xuống • Đúng đi tiếp • 5 câu tăng dần độ khó*.
-2. **Mở cửa ải** — trên bản đồ 5 phong bì, bấm **Mở cửa ải tiếp theo**; cửa đã qua sáng đỏ trầm, cửa hiện tại nổi sáng.
+2. **Mở cửa ải đầu tiên** — bản đồ 5 phong bì hiện lời chào hành trình; bấm **Mở cửa ải**. Từ câu 2 trở đi không quay lại bản đồ nữa: mỗi lần bấm nút chuyển tiếp là sang thẳng câu hỏi kế.
 3. **Chiếu câu hỏi** — bấm **Bắt đầu đếm** (15–20 giây tùy câu, có thể **Tạm dừng/Tiếp tục**); hết giờ hệ thống **tự khóa**; hoặc bấm **Khóa đáp án** sớm hơn nếu cả lớp chọn xong.
-4. **Công bố & nhập kết quả** — bấm **Công bố đáp án**: đáp án đúng viền đỏ + dấu ✓, kèm giải thích và nguồn. Nhắc người sai ngồi xuống, rồi nhập **số người còn trụ** (nút +/−) và bấm **Xác nhận kết quả**. Nhập sai có thể sửa ngay; nhầm thì bấm **Hoàn tác** (góc trái trên, quay lại một bước).
-5. **Kết thúc** — còn đúng 1 người: nhập tên (tùy chọn) → màn trao thưởng. Còn nhiều người: hệ thống tự vào **câu phụ phân thắng** (tối đa 2 câu, vẫn hòa thì hiển thị **Đồng chiến thắng**). Còn 0 người: mở **câu cứu trợ** cho nhóm vừa bị loại (chỉ một lần cả ván); không ai đúng thì kết thúc với phần quà khích lệ. Bấm **Chơi lại** để bắt đầu ván mới (có hộp xác nhận).
+4. **Công bố & chuyển câu** — bấm **Công bố đáp án**: đáp án đúng viền đỏ + dấu ✓, kèm giải thích và nguồn. Nhắc người sai ngồi xuống, bấm **−/+** ghi số người còn trụ (không bắt buộc, có thể bỏ qua), rồi bấm **Câu tiếp theo** — sang thẳng câu hỏi kế. Nhầm thì bấm **Hoàn tác** (góc trái trên, quay lại một bước).
+5. **Kết thúc** — còn đúng 1 người sau câu 5: nhập tên (tùy chọn) → màn trao thưởng. Còn nhiều người: hệ thống tự vào **câu phụ phân thắng** (tối đa 2 câu, vẫn hòa thì hiển thị **Đồng chiến thắng**). Còn 0 người: mở **câu cứu trợ** cho nhóm vừa bị loại (chỉ một lần cả ván); không ai đúng thì kết thúc với phần quà khích lệ. Bấm **Chơi lại** để bắt đầu ván mới (có hộp xác nhận).
 
-Phím tắt cho người dẫn: `Space` = mở cửa ải / bắt đầu đếm / tạm dừng–tiếp tục / công bố / nhập kết quả; `L` = khóa đáp án.
+Phím tắt cho người dẫn: `Space` = mở cửa ải / bắt đầu đếm / tạm dừng–tiếp tục / công bố / sang câu tiếp theo; `L` = khóa đáp án.
 
 ## Nội dung học thuật
 
@@ -30,7 +30,7 @@ Thứ tự bốn phương án được xáo một lần đầu ván bằng Fishe
 
 ## Đặc tả kỹ thuật
 
-- **Máy trạng thái hữu hạn**: `setup → map → questionReady → counting → locked → revealed → survivorEntry → (map | tieBreaker | rescue | winner | finished)`, bảng chuyển trạng thái chặn các thao tác sai (công bố trước khóa, sang câu mới trước khi xác nhận survivors…).
+- **Máy trạng thái hữu hạn**: `setup → map → questionReady → counting → locked → revealed → (questionReady | tieBreaker | rescue | winner | finished)`, bảng chuyển trạng thái chặn các thao tác sai (công bố trước khóa, bấm liên tiếp gây bỏ câu…). Sau công bố chỉ có một nút chuyển tiếp — không có bước nhập số.
 - **Undo**: stack tối đa 10 snapshot bất biến (câu hiện tại, trạng thái, survivors, trạng thái cứu trợ, thứ tự phương án, thời gian còn lại, người thắng) — không lưu DOM node.
 - **Bộ đếm**: `performance.now()` + `requestAnimationFrame` (chỉ dùng để vẽ), pause/resume chính xác tới ms; rời tab tự tạm dừng; refresh (F5) khôi phục câu đang chơi ở trạng thái tạm dừng.
 - **localStorage** có schema version + validate; nút Chơi lại xóa riêng dữ liệu ván. Tên người thắng được gán qua `textContent`, chống XSS.

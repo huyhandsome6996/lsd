@@ -74,24 +74,25 @@ test('buildOptionOrder trả về đối tượng đóng băng (bất biến)', 
   assert.ok(Object.isFrozen(order.q1));
 });
 
-/* ---------- 3. Kiểm tra số survivors ---------- */
-test('validateSurvivorsInput: chặn giá trị bất hợp lệ', () => {
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '').ok, false);
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, 'abc').ok, false);
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '7.5').ok, false);
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '11').ok, false, '11 > before=10');
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '-1').ok, false);
-  assert.equal(L.validateSurvivorsInput('main', 0, 0, '1').ok, false, 'before=0 chỉ được 0');
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '10').ok, true);
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, '0').ok, true);
-  assert.equal(L.validateSurvivorsInput('main', 10, 0, ' 7 ').ok, true, 'trim khoảng trắng');
+/* ---------- 3. Chặn biên số người còn trụ (stepper −/+) ---------- */
+test('clampSurvivors: chặn biên 0..before (main/câu phụ)', () => {
+  assert.equal(L.clampSurvivors('main', 10, 0, 10), 10, 'biên trên = before');
+  assert.equal(L.clampSurvivors('main', 10, 0, 0), 0, 'biên dưới = 0');
+  assert.equal(L.clampSurvivors('main', 10, 0, 11), 10, '11 > before=10 bị chặn về 10');
+  assert.equal(L.clampSurvivors('main', 10, 0, -1), 0, 'âm bị chặn về 0');
+  assert.equal(L.clampSurvivors('main', 10, 0, 7), 7);
+  assert.equal(L.clampSurvivors('main', 0, 0, 1), 0, 'before=0 chỉ được 0');
+  assert.equal(L.clampSurvivors('main', 10, 0, NaN), 0, 'không phải số nguyên về 0');
+  assert.equal(L.clampSurvivors('main', 10, 0, 7.5), 0, 'số lẻ không phải Integer về 0');
+  assert.equal(L.clampSurvivors('tb', 3, 0, 2), 2, 'câu phụ dùng cùng luật main');
 });
 
-test('validateSurvivorsInput: chế độ cứu trợ dùng số người vừa bị loại', () => {
-  assert.equal(L.validateSurvivorsInput('rescue', 0, 8, '9').ok, false);
-  assert.equal(L.validateSurvivorsInput('rescue', 0, 8, '8').ok, true);
-  assert.equal(L.validateSurvivorsInput('rescue', 0, 8, '3').ok, true);
-  assert.equal(L.validateSurvivorsInput('rescue', 0, 8, '0').ok, true);
+test('clampSurvivors: chế độ cứu trợ dùng số người vừa bị loại làm trần', () => {
+  assert.equal(L.clampSurvivors('rescue', 0, 8, 9), 8, '9 > eliminated=8 bị chặn về 8');
+  assert.equal(L.clampSurvivors('rescue', 0, 8, 8), 8);
+  assert.equal(L.clampSurvivors('rescue', 0, 8, 3), 3);
+  assert.equal(L.clampSurvivors('rescue', 0, 8, 0), 0);
+  assert.equal(L.clampSurvivors('rescue', 0, 8, -3), 0);
 });
 
 /* ---------- 4. FSM: bảng chuyển trạng thái ---------- */
@@ -101,36 +102,37 @@ test('FSM: các chuyển hợp lệ được chấp nhận', () => {
   assert.equal(L.canTransition('questionReady', 'counting'), true);
   assert.equal(L.canTransition('counting', 'locked'), true);
   assert.equal(L.canTransition('locked', 'revealed'), true);
-  assert.equal(L.canTransition('revealed', 'survivorEntry'), true);
-  assert.equal(L.canTransition('survivorEntry', 'map'), true);
-  assert.equal(L.canTransition('survivorEntry', 'tieBreaker'), true);
-  assert.equal(L.canTransition('survivorEntry', 'rescue'), true);
-  assert.equal(L.canTransition('survivorEntry', 'winner'), true);
-  assert.equal(L.canTransition('survivorEntry', 'finished'), true);
+  assert.equal(L.canTransition('revealed', 'questionReady'), true, 'công bố xong sang thẳng câu kế');
+  assert.equal(L.canTransition('revealed', 'tieBreaker'), true);
+  assert.equal(L.canTransition('revealed', 'rescue'), true);
+  assert.equal(L.canTransition('revealed', 'winner'), true);
+  assert.equal(L.canTransition('revealed', 'finished'), true);
   assert.equal(L.canTransition('tieBreaker', 'rescue'), true);
+  assert.equal(L.canTransition('rescue', 'questionReady'), true, 'cứu trợ xong chơi tiếp');
   assert.equal(L.canTransition('winner', 'finished'), true);
   assert.equal(L.canTransition('finished', 'setup'), true);
 });
 
-test('FSM: chặn chuyển sai (công bố trước khóa, bỏ qua xác nhận, bấm liên tiếp)', () => {
+test('FSM: chặn chuyển sai (công bố trước khóa, bấm liên tiếp, bỏ câu)', () => {
   assert.equal(L.canTransition('counting', 'revealed'), false, 'không công bố trước khóa');
   assert.equal(L.canTransition('questionReady', 'locked'), false, 'phải đếm rồi mới khóa');
-  assert.equal(L.canTransition('revealed', 'map'), false, 'phải qua survivorEntry trước');
+  assert.equal(L.canTransition('revealed', 'map'), false, 'không quay lại bản đồ từ màn công bố');
+  assert.equal(L.canTransition('revealed', 'counting'), false, 'không đếm lại trực tiếp');
+  assert.equal(L.canTransition('revealed', 'revealed'), false, 'không công bố hai lần');
   assert.equal(L.canTransition('map', 'counting'), false);
   assert.equal(L.canTransition('setup', 'questionReady'), false);
   assert.equal(L.canTransition('questionReady', 'revealed'), false);
   assert.equal(L.canTransition('counting', 'counting'), false);
   assert.equal(L.canTransition('winner', 'map'), false);
-  assert.equal(L.canTransition('survivorEntry', 'questionReady'), false, 'không bỏ câu');
   assert.equal(L.canTransition('rescue', 'setup'), false);
 });
 
 test('FSM: effPhase ánh xạ đúng trạng thái hiệu lực', () => {
   assert.equal(L.effPhase({ state: 'questionReady' }), 'ready');
   assert.equal(L.effPhase({ state: 'counting' }), 'counting');
-  assert.equal(L.effPhase({ state: 'survivorEntry' }), 'entry');
+  assert.equal(L.effPhase({ state: 'revealed' }), 'revealed');
   assert.equal(L.effPhase({ state: 'tieBreaker', sub: 'counting' }), 'counting');
-  assert.equal(L.effPhase({ state: 'rescue', sub: 'entry' }), 'entry');
+  assert.equal(L.effPhase({ state: 'rescue', sub: 'revealed' }), 'revealed');
 });
 
 test('setPhase: trạng thái chính và sub-state khớp tên spec', () => {
@@ -138,8 +140,6 @@ test('setPhase: trạng thái chính và sub-state khớp tên spec', () => {
   g.state = 'questionReady';
   L.setPhase(g, 'counting');
   assert.equal(g.state, 'counting');
-  L.setPhase(g, 'entry');
-  assert.equal(g.state, 'survivorEntry');
   const t = { state: 'tieBreaker', sub: 'ready' };
   L.setPhase(t, 'locked');
   assert.equal(t.state, 'tieBreaker');
@@ -291,6 +291,18 @@ test('deserializeGame từ chối dữ liệu hỏng/giả mạo', () => {
     Object.assign(L.serializeGame(validGame(), 100), { rescueContext: { from: 'hack', round: 1, tbRound: 0 } })
   ];
   for (const b of bad) assert.equal(L.deserializeGame(b), null, JSON.stringify(b).slice(0, 60));
+});
+
+test('deserializeGame: nhận save cũ ở survivorEntry/entry (tương thích ngược)', () => {
+  const s = Object.assign(L.serializeGame(validGame(), 100), { state: 'survivorEntry', sub: null });
+  const r = L.deserializeGame(s);
+  assert.ok(r, 'save cũ survivorEntry phải được nhận');
+  assert.equal(r.state, 'revealed');
+  const s2raw = L.serializeGame(validGame(), 100);
+  s2raw.state = 'tieBreaker'; s2raw.sub = 'entry';
+  const r2 = L.deserializeGame(s2raw);
+  assert.ok(r2, 'save cũ sub=entry phải được nhận');
+  assert.equal(r2.sub, 'revealed');
 });
 
 test('sanitizeName chống XSS/ký tự điều khiển, giới hạn 40 ký tự', () => {

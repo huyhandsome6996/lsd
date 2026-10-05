@@ -130,21 +130,17 @@
         <button type="button" id="btnPause" class="btn btn-ghost btn-big" data-testid="btn-pause" hidden>Tạm dừng</button>
         <button type="button" id="btnLock" class="btn btn-dark btn-big" data-testid="btn-lock" hidden>Khóa đáp án</button>
         <button type="button" id="btnReveal" class="btn btn-primary btn-big" data-testid="btn-reveal" hidden>Công bố đáp án</button>
-        <button type="button" id="btnToEntry" class="btn btn-primary btn-big" data-testid="btn-to-entry" hidden>Nhập kết quả</button>
         <span class="chip chip-locked" id="lockedChip" hidden>Đã khóa đáp án &mdash; chờ công bố</span>
       </div>
-      <div class="entry-panel" id="entryPanel" hidden data-testid="entry-panel">
-        <div class="entry-row">
-          <label class="entry-label" id="entryLabel" for="survivorsInput">Số người còn trụ sau vòng này:</label>
-          <div class="stepper">
-            <button type="button" id="btnSurvMinus" class="btn btn-stepper" aria-label="Giảm">&minus;</button>
-            <input id="survivorsInput" data-testid="survivors-input" type="number" inputmode="numeric" min="0" step="1" placeholder="0" autocomplete="off">
-            <button type="button" id="btnSurvPlus" class="btn btn-stepper" aria-label="Tăng">+</button>
-          </div>
-          <span class="entry-max" id="entryMax" data-testid="entry-max">/ tối đa 10</span>
+      <div class="next-panel" id="nextPanel" hidden data-testid="next-panel">
+        <div class="surv-box" data-testid="surv-box">
+          <span class="surv-label" id="survLabel" data-testid="surv-label">Còn trụ sau vòng này:</span>
+          <button type="button" id="btnSurvMinus" class="btn btn-stepper" data-testid="btn-surv-minus" aria-label="Giảm số người còn trụ">&minus;</button>
+          <b class="surv-num" id="survNum" data-testid="surv-num">10</b>
+          <button type="button" id="btnSurvPlus" class="btn btn-stepper" data-testid="btn-surv-plus" aria-label="Tăng số người còn trụ">+</button>
+          <span class="surv-max" id="survMax" data-testid="surv-max">/ 10</span>
         </div>
-        <div class="error-slot"><div class="entry-error" id="entryError" role="alert" hidden data-testid="entry-error"></div></div>
-        <button type="button" id="btnConfirm" class="btn btn-primary btn-big" data-testid="btn-confirm">Xác nhận kết quả</button>
+        <button type="button" id="btnNext" class="btn btn-primary btn-big" data-testid="btn-next">Câu tiếp theo</button>
       </div>
     </footer>
   </section>

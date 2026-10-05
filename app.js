@@ -4,8 +4,10 @@
    Trò chơi lịch sử trên lớp — HTML/CSS/JS thuần, chạy tĩnh trên GitHub Pages.
    Kiến trúc:
    - Máy trạng thái hữu hạn (FSM): setup → map → questionReady → counting →
-     locked → revealed → survivorEntry → (map | tieBreaker | rescue |
-     winner | finished). Câu phụ/cứu trợ dùng trạng thái riêng với sub-state.
+     locked → revealed → (questionReady | tieBreaker | rescue | winner |
+     finished). Câu phụ/cứu trợ dùng trạng thái riêng với sub-state.
+   - Sau công bố: người dẫn chỉnh số người còn trụ bằng nút −/+ rồi bấm
+     MỘT nút "Câu tiếp theo / Xem kết quả" — không có bước nhập số.
    - Undo: stack tối đa 10 snapshot BẤT BIẾN (không lưu DOM node).
    - Bộ đếm: performance.now() + requestAnimationFrame (chỉ để vẽ),
      pause/resume chính xác tới milliseconds.
@@ -161,21 +163,20 @@ const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 15;
 
 const GAME_STATES = ['setup', 'map', 'questionReady', 'counting', 'locked',
-  'revealed', 'survivorEntry', 'rescue', 'tieBreaker', 'winner', 'finished'];
-const SUB_STATES = ['ready', 'counting', 'locked', 'revealed', 'entry'];
+  'revealed', 'rescue', 'tieBreaker', 'winner', 'finished'];
+const SUB_STATES = ['ready', 'counting', 'locked', 'revealed'];
 
-/* Bảng chuyển trạng thái hợp lệ — chặn công bố trước khóa, qua câu mới
-   trước khi xác nhận survivors, bấm liên tiếp gây bỏ câu, v.v. */
+/* Bảng chuyển trạng thái hợp lệ — chặn công bố trước khóa, bấm liên tiếp
+   gây bỏ câu, v.v. revealed đi thẳng sang câu hỏi kế tiếp hoặc kết thúc. */
 const TRANSITIONS = {
   setup: ['map'],
   map: ['questionReady'],
   questionReady: ['counting'],
   counting: ['locked'],
   locked: ['revealed'],
-  revealed: ['survivorEntry'],
-  survivorEntry: ['map', 'tieBreaker', 'rescue', 'winner', 'finished'],
+  revealed: ['questionReady', 'tieBreaker', 'rescue', 'winner', 'finished'],
   tieBreaker: ['rescue', 'winner', 'finished'],
-  rescue: ['map', 'tieBreaker', 'winner', 'finished'],
+  rescue: ['questionReady', 'tieBreaker', 'winner', 'finished'],
   winner: ['finished'],
   finished: ['setup']
 };
@@ -188,7 +189,6 @@ function canTransition(from, to) {
 function effPhase(g) {
   if (g.state === 'tieBreaker' || g.state === 'rescue') return g.sub || 'ready';
   if (g.state === 'questionReady') return 'ready';
-  if (g.state === 'survivorEntry') return 'entry';
   return g.state;
 }
 
@@ -197,8 +197,6 @@ function setPhase(g, ph) {
     g.sub = ph;
   } else if (ph === 'ready') {
     g.state = 'questionReady';
-  } else if (ph === 'entry') {
-    g.state = 'survivorEntry';
   } else {
     g.state = ph;
   }
@@ -277,23 +275,12 @@ function validateOptionOrder(order) {
   return Object.keys(order).length === ALL_QUESTIONS.length;
 }
 
-/* Kiểm tra số người còn trụ nhập vào.
-   main/tiebreaker: 0 <= after <= before; cứu trợ: 0 <= after <= số người vừa bị loại. */
-function validateSurvivorsInput(mode, before, eliminatedCount, raw) {
-  const s = String(raw === null || raw === undefined ? '' : raw).trim();
-  if (s === '') return { ok: false, error: 'Chưa nhập số người.' };
-  if (!/^-?\d+$/.test(s)) return { ok: false, error: 'Hãy nhập số nguyên, ví dụ 7.' };
-  const n = parseInt(s, 10);
-  if (mode === 'rescue') {
-    if (n < 0 || n > eliminatedCount) {
-      return { ok: false, error: 'Cứu trợ: chỉ được nhập từ 0 đến ' + eliminatedCount + ' (số người vừa bị loại).' };
-    }
-  } else {
-    if (n < 0 || n > before) {
-      return { ok: false, error: 'Chỉ được nhập từ 0 đến ' + before + ' (số người trước vòng này).' };
-    }
-  }
-  return { ok: true, value: n };
+/* Chặn biên số người còn trụ khi người dẫn bấm −/+ (không còn ô nhập tay).
+   main/câu phụ: 0 <= survivors <= before; cứu trợ: 0 <= survivors <= số người vừa bị loại. */
+function clampSurvivors(mode, before, eliminatedCount, v) {
+  const max = mode === 'rescue' ? eliminatedCount : before;
+  const n = Number.isInteger(v) ? v : 0;
+  return Math.min(max, Math.max(0, n));
 }
 
 function sanitizeName(s) {
@@ -445,6 +432,9 @@ function deserializeGame(raw) {
   try {
     if (!raw || typeof raw !== 'object') return null;
     if (raw.v !== SCHEMA_VERSION) return null;
+    /* Tương thích save cũ trước khi bỏ bước "nhập kết quả" */
+    if (raw.state === 'survivorEntry') raw.state = 'revealed';
+    if (raw.sub === 'entry') raw.sub = 'revealed';
     if (GAME_STATES.indexOf(raw.state) === -1) return null;
     if (raw.sub !== null && SUB_STATES.indexOf(raw.sub) === -1) return null;
     if (['main', 'tb', 'rescue'].indexOf(raw.mode) === -1) return null;
@@ -513,10 +503,9 @@ function initGameUI() {
     revealPanel: $('revealPanel'), qExplain: $('qExplain'), qSource: $('qSource'),
     qControls: $('qControls'),
     btnStartCount: $('btnStartCount'), btnPause: $('btnPause'), btnLock: $('btnLock'),
-    btnReveal: $('btnReveal'), btnToEntry: $('btnToEntry'), lockedChip: $('lockedChip'),
-    entryPanel: $('entryPanel'), entryLabel: $('entryLabel'),
-    survivorsInput: $('survivorsInput'), entryMax: $('entryMax'),
-    entryError: $('entryError'), btnConfirm: $('btnConfirm'),
+    btnReveal: $('btnReveal'), lockedChip: $('lockedChip'),
+    nextPanel: $('nextPanel'), survLabel: $('survLabel'), survNum: $('survNum'),
+    survMax: $('survMax'), btnNext: $('btnNext'),
     btnSurvMinus: $('btnSurvMinus'), btnSurvPlus: $('btnSurvPlus'),
     winnerName: $('winnerName'), btnAward: $('btnAward'),
     finishedMedal: $('finishedMedal'), finishedTitle: $('finishedTitle'),
@@ -776,12 +765,17 @@ function initGameUI() {
     els.btnPause.textContent = game.timerPaused ? 'Tiếp tục' : 'Tạm dừng';
     els.btnLock.hidden = ph !== 'counting';
     els.btnReveal.hidden = ph !== 'locked';
-    els.btnToEntry.hidden = ph !== 'revealed';
     els.lockedChip.hidden = ph !== 'locked';
+    els.btnNext.hidden = ph !== 'revealed';
+    els.btnNext.textContent = nextLabel();
   }
 
-  function showEntryError(msg) { els.entryError.textContent = msg; els.entryError.hidden = false; }
-  function hideEntryError() { els.entryError.hidden = true; }
+  /* Nhãn nút chuyển tiếp: giữa vòng thì "Câu tiếp theo", câu 5/câu phụ/
+     cứu trợ thì bấm là xem kết quả (thắng, câu phụ kế, cứu trợ, đồng thắng…) */
+  function nextLabel() {
+    if (game.mode === 'main' && game.round < QUESTIONS.length) return 'Câu tiếp theo';
+    return 'Xem kết quả';
+  }
 
   function renderQuestionScreen() {
     const q = currentQuestion(game);
@@ -798,7 +792,7 @@ function initGameUI() {
     els.qSurv.textContent = game.survivors;
     updateProgress();
 
-    const revealedLike = (ph === 'revealed' || ph === 'entry');
+    const revealedLike = (ph === 'revealed');
     const cards = els.optionsGrid.children;
     for (let i = 0; i < cards.length; i++) {
       const id = cards[i].getAttribute('data-opt-id');
@@ -811,18 +805,14 @@ function initGameUI() {
       els.qSource.textContent = 'Nguồn: ' + q.source;
     }
 
-    const isEntry = ph === 'entry';
-    els.entryPanel.hidden = !isEntry;
-    els.qControls.hidden = isEntry;
-    if (isEntry) {
-      const max = game.mode === 'rescue' ? game.eliminatedCount : game.survivorsBefore;
-      els.entryLabel.textContent = game.mode === 'rescue'
-        ? 'Số người trả lời đúng câu cứu trợ (được quay lại):'
-        : 'Số người còn trụ sau vòng này:';
-      els.entryMax.textContent = '/ tối đa ' + max;
-      els.survivorsInput.max = String(max);
-      els.survivorsInput.value = game.lastEntered !== null && game.lastEntered !== undefined ? String(game.lastEntered) : '';
-      hideEntryError();
+    els.nextPanel.hidden = !revealedLike;
+    els.qControls.hidden = revealedLike;
+    if (revealedLike) {
+      const isRescueMode = game.mode === 'rescue';
+      const max = isRescueMode ? game.eliminatedCount : game.survivorsBefore;
+      els.survLabel.textContent = isRescueMode ? 'Số người trả lời đúng cứu trợ:' : 'Còn trụ sau vòng này:';
+      els.survNum.textContent = String(game.survivors);
+      els.survMax.textContent = '/ ' + max;
     }
 
     renderControls(ph);
@@ -948,15 +938,18 @@ function initGameUI() {
     render();
   }
 
-  function openEntry() {
-    if (effPhase(game) !== 'revealed') return;
-    if (!canTransition('revealed', 'survivorEntry') && !(game.state === 'tieBreaker' || game.state === 'rescue')) return;
-    pushHistory();
-    setPhase(game, 'entry');
+  /* Mở thẳng câu hỏi chính kế tiếp (không dừng ở bản đồ) — round ≤ 5. */
+  function gotoMainQuestion(round) {
+    const q = QUESTIONS[round - 1];
+    if (!q) return false;
+    game.mode = 'main';
+    game.state = 'questionReady';
+    game.sub = null;
+    game.round = round;
+    game.survivorsBefore = game.survivors;
     game.lastEntered = null;
-    persist();
-    render();
-    try { els.survivorsInput.focus(); } catch (e) {}
+    timer.setRemaining(q.durationMs, true);
+    return true;
   }
 
   function enterTieBreaker(n) {
@@ -978,11 +971,13 @@ function initGameUI() {
     game.timerPaused = false;
   }
 
-  /* Chuyển tiếp sau khi xác nhận survivors — bộ não điều hướng FSM. */
-  function applyConfirm(mode, val) {
-    const rescueAvailable = !game.rescueUsed;
+  /* Chuyển tiếp sau khi công bố — người dẫn đã chỉnh số còn trụ bằng −/+
+     ngay trên màn công bố, bấm MỘT nút là sang câu kế hoặc kết thúc. */
+  function applyConfirm(mode) {
+    const val = game.survivors;
+    const from = game.state; /* 'revealed' | 'tieBreaker' | 'rescue' */
     const goRescueOrFinish = function () {
-      if (rescueAvailable) {
+      if (!game.rescueUsed && canTransition(from, 'rescue')) {
         game.rescueUsed = true;
         game.eliminatedCount = game.survivorsBefore; /* nhóm vừa bị loại ở vòng này */
         game.rescueContext = { from: mode === 'tb' ? 'tb' : 'main', round: game.round, tbRound: game.tbRound };
@@ -992,28 +987,25 @@ function initGameUI() {
         game.survivors = 0;
         game.lastEntered = null;
         timer.setRemaining(RESCUE_QUESTION.durationMs, true);
-      } else {
+      } else if (canTransition(from, 'finished')) {
         finishGame('none', 0);
       }
     };
+    const toWinner = function () {
+      if (!canTransition(from, 'winner')) return;
+      game.state = 'winner';
+      game.sub = null;
+      game.winnerName = '';
+    };
 
     if (mode === 'main') {
-      game.survivors = val;
       if (game.round < QUESTIONS.length) {
-        if (val === 0) {
-          /* Về 0 giữa chừng -> câu cứu trợ (nếu còn) hoặc kết thúc */
-          goRescueOrFinish();
-        } else {
-          game.state = 'map';
-          game.sub = null;
-          game.mode = 'main';
-        }
+        if (val === 0) goRescueOrFinish();
+        else if (canTransition(from, 'questionReady')) gotoMainQuestion(game.round + 1);
       } else if (val >= 2) {
-        enterTieBreaker(1);
+        if (canTransition(from, 'tieBreaker')) enterTieBreaker(1);
       } else if (val === 1) {
-        game.state = 'winner';
-        game.sub = null;
-        game.winnerName = '';
+        toWinner();
       } else {
         goRescueOrFinish();
       }
@@ -1021,65 +1013,49 @@ function initGameUI() {
     }
 
     if (mode === 'tb') {
-      game.survivors = val;
       if (val === 1) {
-        game.state = 'winner';
-        game.sub = null;
-        game.winnerName = '';
+        toWinner();
       } else if (val === 0) {
         goRescueOrFinish();
       } else if (game.tbRound < TIEBREAKERS.length) {
         enterTieBreaker(game.tbRound + 1);
-      } else {
+      } else if (canTransition(from, 'finished')) {
         finishGame('tie', val);
       }
       return;
     }
 
     if (mode === 'rescue') {
-      game.survivors = val;
       if (val <= 0) {
-        finishGame('none', 0);
+        if (canTransition(from, 'finished')) finishGame('none', 0);
         return;
       }
       const ctx = game.rescueContext || { from: 'main', round: QUESTIONS.length, tbRound: 0 };
       if (ctx.from === 'tb') {
         if (val === 1) {
-          game.state = 'winner';
-          game.sub = null;
-          game.winnerName = '';
+          toWinner();
         } else if (ctx.tbRound < TIEBREAKERS.length) {
           enterTieBreaker(ctx.tbRound + 1);
-        } else {
+        } else if (canTransition(from, 'finished')) {
           finishGame('tie', val);
         }
       } else {
         if (ctx.round < QUESTIONS.length) {
-          game.state = 'map';
-          game.sub = null;
-          game.mode = 'main';
+          if (canTransition(from, 'questionReady')) gotoMainQuestion(ctx.round + 1);
         } else if (val === 1) {
-          game.state = 'winner';
-          game.sub = null;
-          game.winnerName = '';
-        } else {
+          toWinner();
+        } else if (canTransition(from, 'tieBreaker')) {
           enterTieBreaker(1);
         }
       }
     }
   }
 
-  function confirmResult() {
-    if (effPhase(game) !== 'entry') return;
-    const res = validateSurvivorsInput(game.mode, game.survivorsBefore, game.eliminatedCount, els.survivorsInput.value);
-    if (!res.ok) {
-      showEntryError(res.error);
-      return;
-    }
-    hideEntryError();
+  /* Nút duy nhất sau công bố: Câu tiếp theo / Xem kết quả. */
+  function advanceNext() {
+    if (effPhase(game) !== 'revealed') return;
     pushHistory();
-    game.lastEntered = res.value;
-    applyConfirm(game.mode, res.value);
+    applyConfirm(game.mode);
     persist();
     render();
   }
@@ -1115,8 +1091,7 @@ function initGameUI() {
   els.btnPause.addEventListener('click', togglePause);
   els.btnLock.addEventListener('click', function () { lockAnswer(false); });
   els.btnReveal.addEventListener('click', revealAnswer);
-  els.btnToEntry.addEventListener('click', openEntry);
-  els.btnConfirm.addEventListener('click', confirmResult);
+  els.btnNext.addEventListener('click', advanceNext);
   els.btnAward.addEventListener('click', awardWinner);
   els.btnReplay.addEventListener('click', restart);
   els.btnModalOk.addEventListener('click', function () { closeConfirm(true); });
@@ -1137,32 +1112,17 @@ function initGameUI() {
   els.btnCountMinus.addEventListener('click', function () { stepPlayerCount(-1); });
   els.btnCountPlus.addEventListener('click', function () { stepPlayerCount(1); });
 
-  els.survivorsInput.addEventListener('input', function () {
-    const raw = els.survivorsInput.value;
-    const res = validateSurvivorsInput(game.mode, game.survivorsBefore, game.eliminatedCount, raw);
-    if (res.ok) {
-      game.lastEntered = res.value;
-      hideEntryError();
-      persist();
-    } else if (String(raw).trim() === '') {
-      hideEntryError();
-    } else {
-      showEntryError(res.error);
-    }
-  });
-  els.survivorsInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      confirmResult();
-    }
-  });
+  /* Nút −/+ chỉnh TRỰC TIẾP số người còn trụ ngay trên màn công bố,
+     chặn biên 0..tối đa; chip "Còn trụ" ở đầu màn cập nhật theo. */
   function stepSurv(delta) {
-    const max = game.mode === 'rescue' ? game.eliminatedCount : game.survivorsBefore;
-    let v = parseInt(els.survivorsInput.value, 10);
-    if (!Number.isInteger(v)) v = 0;
-    v = Math.min(max, Math.max(0, v + delta));
-    els.survivorsInput.value = String(v);
-    els.survivorsInput.dispatchEvent(new Event('input'));
+    if (effPhase(game) !== 'revealed') return;
+    const v = clampSurvivors(game.mode, game.survivorsBefore, game.eliminatedCount, game.survivors + delta);
+    if (v === game.survivors) return;
+    game.survivors = v;
+    game.lastEntered = v;
+    els.survNum.textContent = String(v);
+    els.qSurv.textContent = String(v);
+    persist();
   }
   els.btnSurvMinus.addEventListener('click', function () { stepSurv(-1); });
   els.btnSurvPlus.addEventListener('click', function () { stepSurv(1); });
@@ -1174,8 +1134,8 @@ function initGameUI() {
     }
   });
 
-  /* Phím tắt cho người dẫn: Space (mở cửa ải/bắt đầu/tạm dừng/công bố),
-     L (khóa đáp án). Không hoạt động khi đang gõ trong ô nhập. */
+  /* Phím tắt cho người dẫn: Space (mở cửa ải/bắt đầu/tạm dừng/công bố/
+     sang câu tiếp theo), L (khóa đáp án). Không hoạt động khi đang gõ. */
   document.addEventListener('keydown', function (e) {
     if (modalOpen) {
       if (e.key === 'Escape') closeConfirm(false);
@@ -1190,7 +1150,7 @@ function initGameUI() {
       if (ph === 'ready') startCountdown();
       else if (ph === 'counting') togglePause();
       else if (ph === 'locked') revealAnswer();
-      else if (ph === 'revealed') openEntry();
+      else if (ph === 'revealed') advanceNext();
     } else if (e.key === 'l' || e.key === 'L') {
       if (effPhase(game) === 'counting') lockAnswer(false);
     }
@@ -1257,7 +1217,7 @@ if (typeof module !== 'undefined' && module.exports) {
     shuffleIds: shuffleIds,
     buildOptionOrder: buildOptionOrder,
     validateOptionOrder: validateOptionOrder,
-    validateSurvivorsInput: validateSurvivorsInput,
+    clampSurvivors: clampSurvivors,
     sanitizeName: sanitizeName,
     makeSnapshot: makeSnapshot,
     pushSnapshot: pushSnapshot,
